@@ -19,7 +19,11 @@ wechat-oa-draft-pusher —— 把文章推送进微信公众号草稿箱。
       [--title "标题"] [--author "作者"] [--digest "摘要"] \
       [--token-cache /path/to/token.json] \
       [--config /path/to/config.json] \
+      [--update-media-id MEDIA_ID] \
       [--no-force-ipv4] [--dry-run]
+
+更新已有草稿：传入 --update-media-id <某条草稿的 media_id>，则调用 draft/update
+原地更新该草稿（而不是新建一条）；media_id 可在首次创建草稿成功时从日志里拿到。
 
 凭据三种提供方式（优先级：命令行 > config.json > 环境变量）：
   1) 命令行：--appid / --appsecret
@@ -51,6 +55,7 @@ from pathlib import Path
 TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token"
 ADD_MATERIAL_URL = "https://api.weixin.qq.com/cgi-bin/material/add_material"
 DRAFT_ADD_URL = "https://api.weixin.qq.com/cgi-bin/draft/add"
+DRAFT_UPDATE_URL = "https://api.weixin.qq.com/cgi-bin/draft/update"
 IP_ECHO_URLS = [
     "https://api.ipify.org",
     "https://ifconfig.me/ip",
@@ -467,6 +472,7 @@ def main():
     ap.add_argument("--author", default=None, help="作者")
     ap.add_argument("--digest", default=None, help="摘要（缺省取首段）")
     ap.add_argument("--token-cache", default=None, help="access_token 缓存文件路径")
+    ap.add_argument("--update-media-id", default=None, help="已有草稿的 media_id；提供则调用 draft/update 原地更新该草稿，而不是新建")
     ap.add_argument("--no-force-ipv4", action="store_true", help="关闭默认的 IPv4 强制（默认强制 IPv4，因微信白名单仅支持 IPv4）")
     ap.add_argument("--dry-run", action="store_true", help="只解析与上传图片，不创建草稿")
     args = ap.parse_args()
@@ -519,7 +525,7 @@ def main():
         log("=== DRY-RUN 结束（未创建草稿）===")
         sys.exit(0)
 
-    log("=== 4/4 创建草稿 ===")
+    log("=== 4/4 创建 / 更新草稿 ===")
     article = {
         "title": title,
         "author": author,
@@ -530,8 +536,21 @@ def main():
     }
     if cover_media_id:
         article["thumb_media_id"] = cover_media_id
-    payload = {"articles": [article]}
-    url = f"{DRAFT_ADD_URL}?access_token={token}"
+
+    if args.update_media_id:
+        # 更新已有草稿：微信 draft/update 接口，articles 为单个对象（非数组）
+        payload = {
+            "media_id": args.update_media_id,
+            "index": 0,
+            "articles": article,
+        }
+        url = f"{DRAFT_UPDATE_URL}?access_token={token}"
+        log(f"  模式：更新已有草稿 media_id={args.update_media_id}")
+    else:
+        payload = {"articles": [article]}
+        url = f"{DRAFT_ADD_URL}?access_token={token}"
+        log("  模式：新建草稿")
+
     try:
         resp = http_post_json(url, payload)
     except urllib.error.HTTPError as e:
@@ -540,10 +559,17 @@ def main():
         except Exception:
             resp = {"errcode": e.code, "errmsg": str(e)}
         raise_api_error(resp)
-    if "media_id" not in resp:
-        raise_api_error(resp)
-    log("✅ 草稿创建成功！")
-    log(f"   草稿 media_id：{resp['media_id']}")
+
+    if args.update_media_id:
+        if resp.get("errcode", 0) != 0:
+            raise_api_error(resp)
+        log("✅ 草稿更新成功！")
+        log(f"   草稿 media_id：{args.update_media_id}")
+    else:
+        if "media_id" not in resp:
+            raise_api_error(resp)
+        log("✅ 草稿创建成功！")
+        log(f"   草稿 media_id：{resp['media_id']}")
     log("   请到公众号后台【草稿箱】检查标题、封面与排版，确认无误后手动点击群发。")
 
 

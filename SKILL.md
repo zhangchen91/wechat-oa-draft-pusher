@@ -76,6 +76,8 @@ python3 <skill-root>/scripts/push_to_draft.py \
 
 脚本会：① 验证凭据；② 解析正文（Markdown/HTML/Word/纯文本）；③ 上传封面与正文中所有本地配图；④ 调用 `cgi-bin/draft/add` 创建草稿。
 
+**更新已有草稿（而非新建）**：加上 `--update-media-id <MEDIA_ID>` 参数，脚本会改为调用 `cgi-bin/draft/update` 原地更新该草稿（不会再多出一条）。`MEDIA_ID` 取自首次创建草稿成功时日志里打印的值（用户可从公众号后台草稿箱点开草稿、地址栏 `media_id=` 参数也能看到）。适合「文章改了一版、只想更新原草稿」的场景。
+
 ### 4. 交付与边界
 
 - 推送成功后，告诉用户到公众号后台【草稿箱】检查**标题、封面、配图、排版**。
