@@ -1,0 +1,6 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+# 本地凭据与 token 缓存切勿提交
+config.json
+*.token.json

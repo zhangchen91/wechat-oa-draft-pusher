@@ -1,0 +1,4 @@
+interface:
+  display_name: "微信公众号草稿推送"
+  short_description: "把文章推送到公众号草稿箱"
+  default_prompt: "使用 $wechat-oa-draft-pusher 把这个文章推送到我的微信公众号草稿箱。"
